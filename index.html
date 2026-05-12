@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キャラクター診断 v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --pink: #E8607A; --pink-light: #FBEAF0; --pink-dark: #9C3050;
+    --purple: #7C5CBF; --gold: #C9973A;
+    --bg: #FDF8F5; --card: #FFFFFF; --text: #1E1510; --muted: #7A6A62;
+    --border: rgba(200,160,140,0.25); --radius: 16px;
+  }
+  body {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px 16px;
+    background-image:
+      radial-gradient(circle at 10% 20%, rgba(232,96,122,0.07) 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, rgba(124,92,191,0.07) 0%, transparent 50%);
+  }
+  .container { width: 100%; max-width: 560px; }
+  .header { text-align: center; margin-bottom: 28px; animation: fadeUp 0.6s ease both; }
+  .header-eyebrow { font-size: 11px; letter-spacing: 0.2em; color: var(--pink); text-transform: uppercase; margin-bottom: 10px; }
+  .header h1 { font-family: 'Noto Serif JP', serif; font-size: 24px; font-weight: 700; line-height: 1.5; }
+  .header h1 span { color: var(--pink); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; box-shadow: 0 4px 24px rgba(200,120,120,0.08); animation: fadeUp 0.4s ease both; }
+  .progress-wrap { margin-bottom: 22px; }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .progress-track { height: 4px; background: rgba(200,160,140,0.2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--pink), var(--purple)); border-radius: 2px; transition: width 0.4s ease; }
+  .question { font-family: 'Noto Serif JP', serif; font-size: 16px; font-weight: 700; line-height: 1.6; margin-bottom: 18px; }
+  .options { display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
+  .opt-btn { display: block; width: 100%; text-align: left; padding: 12px 15px; background: #FDF8F5; border: 1px solid var(--border); border-radius: 12px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 13px; color: var(--text); cursor: pointer; transition: all 0.2s ease; line-height: 1.5; }
+  .opt-btn:hover { border-color: var(--pink); background: var(--pink-light); transform: translateX(3px); }
+  .opt-btn.selected { border: 2px solid var(--pink); background: var(--pink-light); color: var(--pink-dark); font-weight: 500; }
+  .navs { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .nav-btn { padding: 11px 20px; border-radius: 10px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+  .nav-btn.back { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .nav-btn.back:hover { border-color: var(--muted); color: var(--text); }
+  .nav-btn.next { background: var(--pink); border: none; color: #fff; flex: 1; text-align: center; }
+  .nav-btn.next:hover { background: var(--pink-dark); transform: translateY(-1px); }
+  .nav-btn.dimmed { opacity: 0.35; pointer-events: none; }
+  .result-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 4px 24px rgba(200,120,120,0.08); animation: fadeUp 0.6s ease both; }
+  .result-hero { padding: 36px 28px 28px; text-align: center; }
+  .result-icon { font-size: 64px; display: block; margin-bottom: 12px; animation: pop 0.5s ease both 0.2s; }
+  .result-badge { display: inline-block; font-size: 11px; letter-spacing: 0.12em; color: var(--pink); background: rgba(232,96,122,0.12); padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; }
+  .result-name { font-family: 'Noto Serif JP', serif; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .result-series { font-size: 12px; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 10px; }
+  .result-keyword { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .kw { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: rgba(200,160,140,0.15); color: var(--muted); }
+  .result-body { padding: 24px 28px; }
+  .result-desc { font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 24px; border-left: 3px solid var(--pink-light); padding-left: 14px; }
+  .traits-title { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 14px; }
+  .trait-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .trait-label { font-size: 12px; color: var(--muted); width: 68px; flex-shrink: 0; text-align: right; }
+  .trait-track { flex: 1; height: 6px; background: rgba(200,160,140,0.15); border-radius: 3px; overflow: hidden; }
+  .trait-bar { height: 100%; border-radius: 3px; transition: width 1s ease 0.3s; }
+  .trait-val { font-size: 12px; font-weight: 500; color: var(--text); min-width: 20px; }
+  .retry-btn { display: block; width: 100%; margin-top: 20px; padding: 13px; background: transparent; border: 1px solid var(--border); border-radius: 10px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 13px; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+  .retry-btn:hover { border-color: var(--pink); color: var(--pink); }
+  .start-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px 28px; text-align: center; box-shadow: 0 4px 24px rgba(200,120,120,0.08); animation: fadeUp 0.5s ease both; }
+  .start-emoji { font-size: 48px; margin-bottom: 16px; display: block; }
+  .start-title { font-family: 'Noto Serif JP', serif; font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+  .start-desc { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+  .start-cats { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; text-align: left; }
+  .start-cat { background: #FDF8F5; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: var(--muted); }
+  .start-cat strong { color: var(--text); font-size: 13px; display: block; margin-bottom: 3px; }
+  .start-chars { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 24px; }
+  .start-char { font-size: 20px; }
+  .start-btn { width: 100%; padding: 14px; background: var(--pink); border: none; border-radius: 12px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; transition: all 0.2s; }
+  .start-btn:hover { background: var(--pink-dark); transform: translateY(-2px); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-eyebrow">Character Diagnosis</div>
+    <h1>あなたに近い<span>人物・キャラ</span>は？</h1>
+  </div>
+  <div id="root"></div>
+</div>
+<script>
+var qs = [
+  { q: "朝起きて、今日どんな日にしたいと思う？", opts: [
+    { t: "とにかく動く！面白いことが起きそうな予感", s: {action:3,logic:0,emotion:1,lead:2,cute:0,style:0,adapt:1,wild:2,care:0,art:0} },
+    { t: "計画通りに進めたい。段取りが大事", s: {action:0,logic:3,emotion:0,lead:1,cute:0,style:1,adapt:0,wild:0,care:0,art:1} },
+    { t: "大切な人と過ごせたらそれだけでいい", s: {action:0,logic:0,emotion:3,lead:1,cute:2,style:1,adapt:2,wild:0,care:2,art:0} },
+    { t: "自分のペースで、好きなことに集中したい", s: {action:1,logic:1,emotion:0,lead:0,cute:1,style:2,adapt:3,wild:1,care:0,art:2} }
+  ]},
+  { q: "ピンチのとき、あなたが一番頼りにするのは？", opts: [
+    { t: "根性と体力。とにかく諦めない", s: {action:3,logic:0,emotion:2,lead:1,cute:0,style:0,adapt:0,wild:2,care:1,art:0} },
+    { t: "頭脳と分析力。冷静に解決策を見つける", s: {action:0,logic:3,emotion:0,lead:1,cute:0,style:1,adapt:1,wild:0,care:0,art:0} },
+    { t: "仲間の存在と、周りへの思いやり", s: {action:1,logic:0,emotion:3,lead:2,cute:2,style:0,adapt:2,wild:0,care:3,art:0} },
+    { t: "直感とひらめき。なんとかなる感覚", s: {action:2,logic:1,emotion:1,lead:0,cute:0,style:1,adapt:3,wild:2,care:0,art:1} }
+  ]},
+  { q: "自分のスタイルや個性の出し方は？", opts: [
+    { t: "可愛いが最高。見た目もこだわりたい", s: {action:0,logic:0,emotion:2,lead:0,cute:3,style:2,adapt:1,wild:0,care:1,art:1} },
+    { t: "かっこよくスタイリッシュに決めたい", s: {action:1,logic:1,emotion:0,lead:2,cute:0,style:3,adapt:0,wild:1,care:0,art:1} },
+    { t: "言葉や表現で、自分の世界を作る", s: {action:0,logic:2,emotion:2,lead:1,cute:1,style:2,adapt:1,wild:0,care:1,art:3} },
+    { t: "行動で示す。見た目より結果が全て", s: {action:3,logic:1,emotion:0,lead:2,cute:0,style:0,adapt:1,wild:2,care:0,art:0} }
+  ]},
+  { q: "あなたが一番大切にしていることは？", opts: [
+    { t: "自由。誰にも縛られたくない", s: {action:3,logic:1,emotion:1,lead:1,cute:0,style:1,adapt:2,wild:3,care:0,art:0} },
+    { t: "愛と絆。大切な人を守り抜くこと", s: {action:1,logic:0,emotion:3,lead:2,cute:2,style:1,adapt:2,wild:0,care:3,art:0} },
+    { t: "真実と知識。世界の仕組みを知りたい", s: {action:0,logic:3,emotion:0,lead:0,cute:0,style:1,adapt:1,wild:1,care:0,art:1} },
+    { t: "信念と美学。自分のスタイルを貫くこと", s: {action:2,logic:2,emotion:1,lead:2,cute:1,style:3,adapt:0,wild:2,care:0,art:2} }
+  ]},
+  { q: "理想のリーダー像・自分の在り方は？", opts: [
+    { t: "みんなを引っ張る熱いリーダーでいたい", s: {action:2,logic:0,emotion:2,lead:3,cute:1,style:1,adapt:0,wild:2,care:2,art:0} },
+    { t: "縁の下の力持ち。支える側が好き", s: {action:1,logic:1,emotion:2,lead:0,cute:1,style:0,adapt:2,wild:0,care:3,art:1} },
+    { t: "孤高でいい。自分の道を自分で決める", s: {action:2,logic:2,emotion:0,lead:2,cute:0,style:3,adapt:1,wild:2,care:0,art:1} },
+    { t: "時代や社会を変えたい。大きな変革者に", s: {action:1,logic:3,emotion:1,lead:3,cute:0,style:1,adapt:0,wild:1,care:2,art:1} }
+  ]},
+  { q: "困難や逆境に立たされたとき、あなたは？", opts: [
+    { t: "笑顔で乗り越える。なんとかなる！", s: {action:2,logic:0,emotion:2,lead:1,cute:2,style:0,adapt:3,wild:2,care:1,art:0} },
+    { t: "怒りと信念をエネルギーに変えて突き進む", s: {action:3,logic:0,emotion:2,lead:2,cute:0,style:0,adapt:0,wild:3,care:0,art:0} },
+    { t: "静かに、でも確実に。データと論理で対処", s: {action:1,logic:3,emotion:0,lead:2,cute:0,style:2,adapt:1,wild:0,care:0,art:0} },
+    { t: "周りを観察して、最善のタイミングを待つ", s: {action:0,logic:2,emotion:1,lead:1,cute:1,style:1,adapt:3,wild:0,care:2,art:1} }
+  ]},
+  { q: "あなたが輝く場面・得意なことは？", opts: [
+    { t: "表現・創作・パフォーマンスで魅せること", s: {action:1,logic:1,emotion:3,lead:1,cute:2,style:2,adapt:1,wild:1,care:0,art:3} },
+    { t: "誰も解けない問題を、一人で解くこと", s: {action:0,logic:3,emotion:0,lead:0,cute:0,style:1,adapt:1,wild:1,care:0,art:1} },
+    { t: "困っている人を助けて、笑顔にすること", s: {action:1,logic:0,emotion:2,lead:1,cute:2,style:0,adapt:2,wild:0,care:3,art:0} },
+    { t: "誰も試みなかった新しいことに挑むこと", s: {action:2,logic:1,emotion:0,lead:2,cute:0,style:2,adapt:2,wild:3,care:0,art:1} }
+  ]},
+  { q: "あなたの夢・将来像は？", opts: [
+    { t: "頂点に立つ。誰よりも自由に、一番に", s: {action:3,logic:0,emotion:2,lead:3,cute:0,style:0,adapt:1,wild:3,care:0,art:0} },
+    { t: "歴史に名を残す。時代を根底から変えたい", s: {action:2,logic:2,emotion:0,lead:3,cute:0,style:2,adapt:0,wild:2,care:0,art:1} },
+    { t: "人々の心に残る、何かを生み出したい", s: {action:0,logic:1,emotion:3,lead:1,cute:2,style:2,adapt:2,wild:0,care:2,art:3} },
+    { t: "世界中の人の役に立ちたい。社会を変えたい", s: {action:1,logic:2,emotion:2,lead:2,cute:0,style:0,adapt:1,wild:0,care:3,art:1} }
+  ]}
+];
+
+var chars = [
+  // アニメ・漫画
+  {
+    name:"モンキー・D・ルフィタイプ", series:"ONE PIECE", icon:"🏴‍☠️",
+    keywords:["自由","仲間","直感","王者"],
+    desc:"誰よりも自由で、仲間への愛情が深い。理屈より心で動き、周りを自然と引きつけるカリスマ性がある。夢を疑わず突き進む、最強の楽観主義者。",
+    heroColor:"linear-gradient(135deg,#FFF3E0 0%,#FFE0B2 100%)",
+    match:function(s){return s.action>=9&&s.lead>=7&&s.wild>=7;}
+  },
+  {
+    name:"光月おでんタイプ", series:"ONE PIECE", icon:"⚔️",
+    keywords:["豪快","信念","愛","伝説"],
+    desc:"豪快で自由奔放、でも仲間と家族への愛が誰よりも深い。自分の信念のためなら全てを賭ける伝説級のカリスマ。笑いながら泣かせる生き様を持つ。",
+    heroColor:"linear-gradient(135deg,#FFF8E1 0%,#FFE082 100%)",
+    match:function(s){return s.emotion>=7&&s.lead>=8&&s.wild>=5;}
+  },
+  {
+    name:"千（荻野千尋）タイプ", series:"千と千尋の神隠し", icon:"🌊",
+    keywords:["成長","適応","純粋","強さ"],
+    desc:"最初は普通の女の子でも、環境に適応しながら驚くほどの強さを発揮する成長型ヒロイン。純粋さと優しさが武器で、誰も助けられない場所で奇跡を起こす。",
+    heroColor:"linear-gradient(135deg,#E0F7FA 0%,#B2EBF2 100%)",
+    match:function(s){return s.adapt>=9&&s.emotion>=5;}
+  },
+  {
+    name:"セーラームーンタイプ", series:"美少女戦士セーラームーン", icon:"🌙",
+    keywords:["愛","可愛さ","正義","変身"],
+    desc:"可愛さと強さを完全に両立する最強ヒロイン。泣き虫に見えて、愛する人のためには誰よりも強くなれる。愛と正義の名のもとに、どんな敵も倒す。",
+    heroColor:"linear-gradient(135deg,#FCE4EC 0%,#F8BBD0 100%)",
+    match:function(s){return s.cute>=8&&s.emotion>=6;}
+  },
+  {
+    name:"五条悟タイプ", series:"呪術廻戦", icon:"🔵",
+    keywords:["最強","カリスマ","美学","孤高"],
+    desc:"圧倒的な実力と独自の美学を持つ、生まれながらの最強者。スタイリッシュで飄々としているが、その奥には揺るぎない信念がある。誰にも縛られない自由人。",
+    heroColor:"linear-gradient(135deg,#E8EAF6 0%,#C5CAE9 100%)",
+    match:function(s){return s.style>=9&&s.lead>=6;}
+  },
+  {
+    name:"鬼滅の炭治郎タイプ", series:"鬼滅の刃", icon:"🔥",
+    keywords:["諦めない","共感","熱血","家族愛"],
+    desc:"仲間と家族への深い愛情と、絶対に諦めない強さを持つ正統派ヒーロー。感情が豊かで、敵の気持ちにすら寄り添える。逆境でこそ最も輝く。",
+    heroColor:"linear-gradient(135deg,#FFEBEE 0%,#FFCDD2 100%)",
+    match:function(s){return s.emotion>=9&&s.care>=5;}
+  },
+  {
+    name:"デスノートのLタイプ", series:"DEATH NOTE", icon:"🧠",
+    keywords:["知性","洞察","孤独","正義"],
+    desc:"世界一の頭脳と独特な思考回路を持つ天才。常識の外側で考え、誰も気づかない真実を見抜く。孤独に見えて、実は強い正義感を持っている。",
+    heroColor:"linear-gradient(135deg,#F3E5F5 0%,#E1BEE7 100%)",
+    match:function(s){return s.logic>=11;}
+  },
+  {
+    name:"マリオタイプ", series:"スーパーマリオ", icon:"🍄",
+    keywords:["諦めない","陽気","挑戦","愛"],
+    desc:"何度倒されても立ち上がる、究極のポジティブ人間。大切な人のためなら何でも挑戦し、どんな世界でも楽しんでしまう。みんなから愛される普遍的なヒーロー。",
+    heroColor:"linear-gradient(135deg,#FFEBEE 0%,#FFF9C4 100%)",
+    match:function(s){return s.adapt>=7&&s.action>=6&&s.emotion>=5;}
+  },
+  {
+    name:"カービィタイプ", series:"星のカービィ", icon:"🌸",
+    keywords:["可愛い","無敵","天真爛漫","適応"],
+    desc:"見た目は可愛いのに実は最強、という最高の組み合わせ。どんな能力も吸収して自分のものにする適応力の化け物。天真爛漫で、周りを幸せにする存在。",
+    heroColor:"linear-gradient(135deg,#FCE4EC 0%,#FFE0F0 100%)",
+    match:function(s){return s.cute>=7&&s.adapt>=6;}
+  },
+  {
+    name:"メタナイトタイプ", series:"星のカービィ", icon:"⚡",
+    keywords:["謎","誇り","強さ","美学"],
+    desc:"謎めいた存在感と圧倒的な実力を持つ孤高のナイト。普段は寡黙で近寄りがたいが、独自の誇りと美学を持ち、時に敵すら助ける高潔さがある。",
+    heroColor:"linear-gradient(135deg,#E8EAF6 0%,#CFD8DC 100%)",
+    match:function(s){return s.style>=7&&s.action>=6&&s.wild>=4;}
+  },
+  // 新撰組
+  {
+    name:"沖田総司タイプ", series:"新撰組", icon:"🌸",
+    keywords:["天才","純粋","剣","儚さ"],
+    desc:"天才的な剣の才能を持ちながら、少年のような純粋さを失わない。笑顔の裏に孤独を隠し、信念のためなら命も厭わない。美しく儚い強さを持つ人。",
+    heroColor:"linear-gradient(135deg,#FCE4EC 0%,#E8EAF6 100%)",
+    match:function(s){return s.action>=8&&s.cute>=4&&s.style>=5;}
+  },
+  {
+    name:"土方歳三タイプ", series:"新撰組", icon:"🗡️",
+    keywords:["鬼の副長","信念","統率","美学"],
+    desc:"鬼の副長と恐れられながら、実は仲間への深い愛情を持つ。圧倒的な統率力と美学を持ち、信念を最後まで貫く。厳しさの中に熱い魂がある。",
+    heroColor:"linear-gradient(135deg,#E8EAF6 0%,#C5CAE9 100%)",
+    match:function(s){return s.lead>=9&&s.style>=6&&s.action>=6;}
+  },
+  {
+    name:"近藤勇タイプ", series:"新撰組", icon:"🏯",
+    keywords:["誠","仲間","リーダー","熱血"],
+    desc:"「誠」の旗のもとに仲間を束ね、信念を貫いた熱血リーダー。強さより人望で人を動かし、仲間のためなら全てを捧げる。愚直なほど真っすぐな魂の持ち主。",
+    heroColor:"linear-gradient(135deg,#E8F5E9 0%,#C8E6C9 100%)",
+    match:function(s){return s.lead>=8&&s.emotion>=7&&s.care>=5;}
+  },
+  // 歴史上の人物
+  {
+    name:"織田信長タイプ", series:"戦国武将", icon:"🔥",
+    keywords:["革新","カリスマ","時代変革","孤高"],
+    desc:"時代を変える革新性と圧倒的なカリスマを持つ覇者。常識を打ち破り、誰も見たことのないビジョンで世界を動かす。中学生起業家のあなたに最も近い存在。",
+    heroColor:"linear-gradient(135deg,#EDE7F6 0%,#D1C4E9 100%)",
+    match:function(s){return s.lead>=9&&s.logic>=7&&s.wild>=5;}
+  },
+  {
+    name:"ナイチンゲールタイプ", series:"近代看護の母", icon:"🕯️",
+    keywords:["献身","改革","知性","優しさ"],
+    desc:"純粋な優しさだけでなく、データと論理で社会を変えた革命家。弱い立場の人々のために戦う強さと、圧倒的な知性を兼ね備えた、真のリーダー。",
+    heroColor:"linear-gradient(135deg,#E0F2F1 0%,#B2DFDB 100%)",
+    match:function(s){return s.care>=8&&s.logic>=6&&s.lead>=5;}
+  },
+  {
+    name:"篤姫タイプ", series:"幕末・薩摩", icon:"👘",
+    keywords:["気品","強さ","愛","時代を生きる"],
+    desc:"激動の時代を気品と強さで生き抜いた女性。与えられた環境に適応しながらも、決して自分の芯を曲げない。愛する人々のために静かに、でも力強く戦い続けた。",
+    heroColor:"linear-gradient(135deg,#FCE4EC 0%,#FFF9C4 100%)",
+    match:function(s){return s.adapt>=7&&s.emotion>=7&&s.cute>=4&&s.lead>=5;}
+  },
+  {
+    name:"テイラー・スウィフトタイプ", series:"シンガーソングライター", icon:"🎵",
+    keywords:["表現","再生","共感","自分らしさ"],
+    desc:"傷ついても何度でも立ち上がり、その経験を最高のアートに変える。感情をそのまま言葉にする才能と、自分らしさを貫く強さを持つ。時代を超えて人の心に届く表現者。",
+    heroColor:"linear-gradient(135deg,#FFF8E1 0%,#FCE4EC 100%)",
+    match:function(s){return s.art>=8&&s.emotion>=6&&s.cute>=4;}
+  },
+  {
+    name:"マリー・キュリータイプ", series:"ノーベル賞科学者", icon:"⚗️",
+    keywords:["探究","信念","先駆者","知性"],
+    desc:"誰もやったことのない領域に挑み続けた、知の先駆者。女性であることの壁も、時代の壁も、純粋な探究心と信念で突破した。世界で初めてノーベル賞を2度受賞した伝説。",
+    heroColor:"linear-gradient(135deg,#E8EAF6 0%,#B2EBF2 100%)",
+    match:function(s){return s.logic>=9&&s.action>=5&&s.wild>=3;}
+  },
+  {
+    name:"坂本龍馬タイプ", series:"幕末志士", icon:"🌏",
+    keywords:["自由","革命","行動","夢想家"],
+    desc:"時代の壁をぶち壊し、誰も思いつかなかった方法で日本を動かした夢想家。自由を愛し、人を惹きつけるカリスマ性と、行動力を兼ね備えた幕末の星。",
+    heroColor:"linear-gradient(135deg,#E0F7FA 0%,#FFF9C4 100%)",
+    match:function(s){return s.action>=7&&s.adapt>=6&&s.lead>=6&&s.wild>=5;}
+  },
+  {
+    name:"徳川家康タイプ", series:"戦国武将", icon:"🐢",
+    keywords:["忍耐","戦略","慎重","天下人"],
+    desc:"焦らず、耐えて、最後に天下を取った戦略家。感情より論理で動き、どんな逆境も辛抱強く乗り越える。「鳴くまで待とう」の精神で、最後に笑う人。",
+    heroColor:"linear-gradient(135deg,#F1F8E9 0%,#DCEDC8 100%)",
+    match:function(s){return s.logic>=8&&s.adapt>=7&&s.lead>=6;}
+  }
+];
+
+var phase='start', cur=0;
+var sc={action:0,logic:0,emotion:0,lead:0,cute:0,style:0,adapt:0,wild:0,care:0,art:0};
+var ans=[];
+for(var i=0;i<qs.length;i++) ans.push(null);
+
+function getChar(){
+  for(var i=0;i<chars.length;i++){ if(chars[i].match(sc)) return chars[i]; }
+  // fallback: 最もスコアが高いキャラ
+  var best=chars[0], bestSum=-1;
+  for(var i=0;i<chars.length;i++){
+    var keys=Object.keys(sc), sum=0;
+    for(var k=0;k<keys.length;k++) sum+=sc[keys[k]];
+    if(sum>bestSum){bestSum=sum;best=chars[i];}
+  }
+  return best;
+}
+
+function pct(v,max){ return Math.min(Math.round(v/max*100),100); }
+
+function drawStart(){
+  var root=document.getElementById('root');
+  var icons=chars.map(function(c){return '<span class="start-char">'+c.icon+'</span>';}).join('');
+  root.innerHTML='<div class="start-card">'
+    +'<span class="start-emoji">✨</span>'
+    +'<div class="start-title">あなたは誰に近い？全20人物から診断</div>'
+    +'<div class="start-desc">漫画・アニメ・ゲーム・歴史上の人物・アーティストの中から、あなたに最も近い人物を8つの質問で診断します。</div>'
+    +'<div class="start-cats">'
+    +'<div class="start-cat"><strong>⚔️ 漫画・アニメ</strong>ルフィ、おでん、千尋、セーラームーン、五条悟、炭治郎、L</div>'
+    +'<div class="start-cat"><strong>🎮 ゲーム</strong>マリオ、カービィ、メタナイト</div>'
+    +'<div class="start-cat"><strong>🗡️ 新撰組</strong>沖田総司、土方歳三、近藤勇</div>'
+    +'<div class="start-cat"><strong>🌏 歴史・著名人</strong>織田信長、ナイチンゲール、篤姫、テイラー・スウィフト、マリー・キュリー、坂本龍馬、徳川家康</div>'
+    +'</div>'
+    +'<div class="start-chars">'+icons+'</div>'
+    +'<button class="start-btn" id="startBtn">診断スタート →</button>'
+    +'</div>';
+  document.getElementById('startBtn').addEventListener('click',function(){ phase='quiz'; draw(); });
+}
+
+function draw(){
+  if(phase==='start'){ drawStart(); return; }
+  var root=document.getElementById('root');
+  if(cur<qs.length){
+    var q=qs[cur];
+    var prog=Math.round(cur/qs.length*100);
+    var html='<div class="card">'
+      +'<div class="progress-wrap">'
+      +'<div class="progress-meta"><span>質問 '+(cur+1)+' / '+qs.length+'</span><span>'+prog+'%</span></div>'
+      +'<div class="progress-track"><div class="progress-fill" style="width:'+prog+'%"></div></div>'
+      +'</div>'
+      +'<p class="question">'+q.q+'</p>'
+      +'<div class="options">';
+    for(var i=0;i<q.opts.length;i++){
+      var sel=ans[cur]===i?' selected':'';
+      html+='<button class="opt-btn'+sel+'" data-idx="'+i+'">'+q.opts[i].t+'</button>';
+    }
+    html+='</div><div class="navs">'
+      +'<button class="nav-btn back'+(cur===0?' dimmed':'')+'" id="bk">← 戻る</button>'
+      +'<button class="nav-btn next'+(ans[cur]===null?' dimmed':'')+'" id="nx">'+(cur===qs.length-1?'結果を見る →':'次へ →')+'</button>'
+      +'</div></div>';
+    root.innerHTML=html;
+    var btns=root.querySelectorAll('.opt-btn');
+    for(var j=0;j<btns.length;j++){
+      (function(idx){
+        btns[idx].addEventListener('click',function(){
+          var prev=ans[cur];
+          if(prev!==null){var pt=qs[cur].opts[prev].s;for(var k in pt)sc[k]-=pt[k];}
+          ans[cur]=idx;
+          var t=qs[cur].opts[idx].s;for(var k in t)sc[k]+=t[k];
+          draw();
+        });
+      })(j);
+    }
+    document.getElementById('nx').addEventListener('click',function(){if(ans[cur]===null)return;cur++;draw();});
+    document.getElementById('bk').addEventListener('click',function(){if(cur===0){phase='start';draw();return;}cur--;draw();});
+  } else {
+    var r=getChar();
+    var traitDefs=[
+      ['行動力','action','#E8607A'],['思考力','logic','#185FA5'],['感情力','emotion','#D4537E'],
+      ['統率力','lead','#7C5CBF'],['可愛さ','cute','#E8607A'],['オシャレ','style','#533AB7'],
+      ['適応力','adapt','#3B6D11'],['野生味','wild','#C9973A'],['思いやり','care','#E8607A'],['表現力','art','#854F0B']
+    ];
+    var kws=r.keywords.map(function(k){return '<span class="kw">'+k+'</span>';}).join('');
+    var traitHtml='';
+    for(var i=0;i<traitDefs.length;i++){
+      var lbl=traitDefs[i][0],key=traitDefs[i][1],col=traitDefs[i][2];
+      traitHtml+='<div class="trait-row">'
+        +'<span class="trait-label">'+lbl+'</span>'
+        +'<div class="trait-track"><div class="trait-bar" style="width:'+pct(sc[key],16)+'%;background:'+col+'"></div></div>'
+        +'<span class="trait-val">'+sc[key]+'</span>'
+        +'</div>';
+    }
+    root.innerHTML='<div class="result-card">'
+      +'<div class="result-hero" style="background:'+r.heroColor+'">'
+      +'<span class="result-icon">'+r.icon+'</span>'
+      +'<div class="result-badge">あなたに最も近い人物</div>'
+      +'<div class="result-name">'+r.name+'</div>'
+      +'<div class="result-series">'+r.series+'</div>'
+      +'<div class="result-keyword">'+kws+'</div>'
+      +'</div>'
+      +'<div class="result-body">'
+      +'<p class="result-desc">'+r.desc+'</p>'
+      +'<div class="traits-title">TRAIT ANALYSIS</div>'
+      +traitHtml
+      +'<button class="retry-btn" id="re">もう一度診断する</button>'
+      +'</div></div>';
+    document.getElementById('re').addEventListener('click',function(){
+      cur=0;phase='start';
+      sc={action:0,logic:0,emotion:0,lead:0,cute:0,style:0,adapt:0,wild:0,care:0,art:0};
+      for(var i=0;i<qs.length;i++) ans[i]=null;
+      draw();
+    });
+  }
+}
+
+draw();
+</script>
+</body>
+</html>
